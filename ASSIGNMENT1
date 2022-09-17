@@ -1,2 +1,15 @@
 HELLO WORLD
 THANKS
+list=[1,2,3,4,5]
+mylist=['Sep batch',2022,True,0.555]
+print(mylist)
+print(mylist[0])
+print(mylist[1])
+print(mylist[2])
+print(mylist[3])
+mylist[1]=2021
+print(mylist)
+mylist.append('Python')
+print(mylist)
+mylist.insert(-3,'Data Science')
+print(mylist)
