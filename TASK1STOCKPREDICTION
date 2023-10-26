@@ -1,0 +1,83 @@
+# Import necessary libraries
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import MinMaxScaler
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import LSTM, Dense
+from tensorflow.keras.optimizers import Adam
+
+# Step 2: Get historical stock price data (you can use a library like yfinance)
+import yfinance as yf
+
+# Replace 'AAPL' with the ticker symbol of the company you want to predict
+company_symbol = 'AAPL'
+start_date = '2020-01-01'
+end_date = '2021-12-31'
+
+# Download historical stock data
+data = yf.download(company_symbol, start=start_date, end=end_date)
+
+# Step 3: Preprocess the data
+data = data['Close'].values.reshape(-1, 1)
+scaler = MinMaxScaler()
+data = scaler.fit_transform(data)
+
+# Split the data into training and testing sets
+train_size = int(len(data) * 0.8)
+train_data = data[:train_size]
+test_data = data[train_size:]
+
+# Function to prepare data for LSTM
+def prepare_data(data, look_back=1):
+    X, Y = [], []
+    for i in range(len(data) - look_back):
+        X.append(data[i:(i + look_back), 0])
+        Y.append(data[i + look_back, 0])
+    return np.array(X), np.array(Y)
+
+look_back = 30  # You can adjust this parameter
+X_train, Y_train = prepare_data(train_data, look_back)
+X_test, Y_test = prepare_data(test_data, look_back)
+
+# Reshape the data to be 3D (samples, time steps, features)
+X_train = np.reshape(X_train, (X_train.shape[0], X_train.shape[1], 1))
+X_test = np.reshape(X_test, (X_test.shape[0], X_test.shape[1], 1))
+
+# Step 4: Create and train an LSTM model
+model = Sequential()
+model.add(LSTM(50, input_shape=(look_back, 1)))
+model.add(Dense(1))
+
+model.compile(loss='mean_squared_error', optimizer=Adam(learning_rate=0.001))
+model.fit(X_train, Y_train, epochs=100, batch_size=64, verbose=1)
+
+# Step 5: Make predictions
+train_predictions = model.predict(X_train)
+test_predictions = model.predict(X_test)
+
+# Inverse transform the predictions to the original scale
+train_predictions = scaler.inverse_transform(train_predictions)
+test_predictions = scaler.inverse_transform(test_predictions)
+
+import matplotlib.pyplot as plt
+
+# Plot the actual stock price and training predictions
+plt.figure(figsize=(12, 6))
+plt.subplot(2, 1, 1)
+plt.plot(data, label='Actual Stock Price', color='blue')
+plt.plot(range(look_back, look_back + len(train_predictions)), train_predictions, label='Training Predictions', color='green')
+plt.title('Training Predictions vs Actual Stock Price')
+plt.legend()
+
+# Plot the test predictions
+plt.subplot(2, 1, 2)
+test_range = range(len(data) - len(test_predictions), len(data))
+plt.plot(test_range, data[-len(test_predictions):], label='Actual Stock Price', color='blue')
+plt.plot(test_range, test_predictions, label='Test Predictions', color='red')
+plt.title('Test Predictions vs Actual Stock Price')
+plt.legend()
+
+plt.tight_layout()
+plt.show()
+
